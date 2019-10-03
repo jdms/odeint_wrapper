@@ -47,6 +47,10 @@ class odeintWrapper {
                     double time1 = 1.0 /**< Final time */,
                     double dt = 1.0 /**< Initial discretization (scheme is adaptive) */)
     {
+        if (time0 > time1) {
+            return boost::numeric::odeint::integrate(-flux_, state, time1, time0, dt);
+        }
+
         return boost::numeric::odeint::integrate(flux_, state, time0, time1, dt);
     }
 
@@ -60,6 +64,11 @@ class odeintWrapper {
     {
         ObservedStates states;
         ObservedTimes times;
+
+        if (time0 > time1) {
+            boost::numeric::odeint::integrate(
+                -flux_, state0, time1, time0, dt, Observer(states, times));
+        }
 
         boost::numeric::odeint::integrate(
             flux_, state0, time0, time1, dt, Observer(states, times));
@@ -95,13 +104,32 @@ class odeintWrapper {
         /// Evaluate vector field, `odeint` expects this signature for its integrators
         void operator()(const State& p /**< Current state */,
                         State& Fp /**< Derivative F(p) */,
-                        double /**< Time (not used) */)
+                        double /**< Time (not used) */) const
         {
             Fp = system_(p);
+
+            if (invert_flux_) {
+                for (auto& Fp_i : Fp) {
+                    Fp_i = -Fp_i;
+                }
+            }
+        }
+
+        /// Invert direction of vector field
+        AutonomousFlux operator-() const
+        {
+            AutonomousFlux minus_flux = *const_cast<AutonomousFlux*>(this);
+            minus_flux.invertFlux();
+
+            return minus_flux;
         }
 
        private:
         std::reference_wrapper<System> system_;  ///< wraps the given ode system
+        bool invert_flux_ = false;               ///< operator() evaluates -system
+
+        /// Invert direction of vector field
+        void invertFlux() { invert_flux_ = !invert_flux_; }
 
     } flux_;  ///< Flux to be integrated */
 
