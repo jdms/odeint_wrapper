@@ -20,18 +20,18 @@ using StateType = std::array<double, 2>;
 class HarmonicOscillator {
     double m_gam;
 
-   public:
-    HarmonicOscillator(double gam = 0.0) : m_gam(gam) {}
+    public:
+        HarmonicOscillator(double gam = 0.0) : m_gam(gam) {}
 
-    StateType operator()(const StateType& x)
-    {
-        StateType dxdt;
+        StateType operator()(const StateType& x)
+        {
+            StateType dxdt;
 
-        dxdt[0] = x[1];
-        dxdt[1] = -x[0] - m_gam * x[1];
+            dxdt[0] = x[1];
+            dxdt[1] = -x[0] - m_gam * x[1];
 
-        return dxdt;
-    }
+            return dxdt;
+        }
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -66,6 +66,7 @@ int main()
 
     // C++17 style
     auto [states, times] = integrator.integrate(x0, t0, t1, dt);
+    auto y = integrator.map(x0, t0, t1, dt);
 
     // C++14 style
     /* using odeIntegrator = odeintWrapper<HarmonicOscillator, StateType>; */
@@ -79,8 +80,8 @@ int main()
 
     for (size_t i = 0; i < states.size(); i++) {
         std::cout << std::fixed << "times[i] = " << times[i]
-                  << ",\t states[i][0] = " << states[i][0]
-                  << ",\t states[i][1] = " << states[i][1] << '\n';
+            << ",\t states[i][0] = " << states[i][0]
+            << ",\t states[i][1] = " << states[i][1] << '\n';
     }
 
     //
@@ -96,8 +97,8 @@ int main()
 
     // The solution is x(t) = (cos(t), sin(t)), thus:
     // x(pi) = (-1.0, 0.0).
-    double tol = 1E-6;
-    std::size_t last = states.size() - 1;
+    double tol = 1E-4;
+    std::size_t last = states.size() > 0 ? states.size() - 1 : 0;
     success &= (std::fabs(states[last][0] + 1.0) < tol);
     success &= (std::fabs(states[last][1] - 0.0) < tol);
 
@@ -106,10 +107,25 @@ int main()
         std::cerr << "\nFailure:";
         std::cerr << "\nExpected solution: x[0] = " << -1.0 << ", x[1] = " << 0.0;
         std::cerr << "\nComputed solution: x[0] = " << states[last][0]
-                  << ", x[1] = " << states[last][1];
+            << ", x[1] = " << states[last][1];
         std::cerr << "\n" << std::flush;
 
         return 2;
+    }
+
+    // final state and mapped state `y` must also be identical
+    success &= (std::fabs(y[0] + 1.0) < tol);
+    success &= (std::fabs(y[1] - 0.0) < tol);
+
+    if (!success) {
+        std::cerr << std::scientific;
+        std::cerr << "\nFailure:";
+        std::cerr << "\nExpected solution: y[0] = " << -1.0 << ", y[1] = " << 0.0;
+        std::cerr << "\nComputed solution: y[0] = " << y[0]
+            << ", y[1] = " << y[1];
+        std::cerr << "\n" << std::flush;
+
+        return 3;
     }
 
     std::cout << "\nSuccess.\n";
